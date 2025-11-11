@@ -1,4 +1,3 @@
-/* App entry point */
 const el = document.getElementById('app');
 const versionEl = document.getElementById('version');
 
@@ -7,7 +6,6 @@ function fmt(ts){
   return d.toISOString().replace('T',' ').replace('Z',' UTC');
 }
 
-// Render a simple interactive card to verify updates
 function render(message){
   el.innerHTML = `
     <div class="grid">
