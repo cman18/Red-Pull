@@ -1,0 +1,13 @@
+{
+  "name": "red-github-version",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "clean": "node scripts/version_and_build.js --clean",
+    "build": "node scripts/version_and_build.js",
+    "dev": "node scripts/serve.js",
+    "deploy:local": "npm run build"
+  },
+  "devDependencies": {}
+}
