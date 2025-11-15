@@ -3,6 +3,7 @@ const input = document.getElementById('username');
 const statusEl = document.getElementById('status');
 const resultsEl = document.getElementById('results');
 const loadBtn = document.getElementById('load-btn');
+const clearBtn = document.getElementById('clear-btn');
 const sentinel = document.getElementById('sentinel');
 const loadingMoreEl = document.getElementById('loading-more');
 const filterImagesEl = document.getElementById('filter-images');
@@ -24,6 +25,8 @@ let state = {
   posts: []
 };
 
+let observer = null;
+
 form.addEventListener('submit', event => {
   event.preventDefault();
   const raw = (input.value || '').trim();
@@ -37,6 +40,15 @@ form.addEventListener('submit', event => {
     return;
   }
   startNewUser(username);
+});
+
+clearBtn.addEventListener('click', () => {
+  input.value = '';
+  state = { username: '', after: null, loading: false, posts: [] };
+  resultsEl.innerHTML = '';
+  statusEl.textContent = 'Idle. Paste a profile URL or enter a username then press Load posts.';
+  downloadZipBtn.disabled = true;
+  if (observer) observer.disconnect();
 });
 
 for (const el of [filterImagesEl, filterVideosEl, filterOtherEl]) {
@@ -63,7 +75,6 @@ scrollTopBtn.addEventListener('click', () => {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 });
 
-let observer = null;
 function setupInfiniteScroll() {
   if (observer) {
     observer.disconnect();
@@ -150,6 +161,7 @@ async function fetchNextPage(replacing) {
 }
 
 function mediaKind(post) {
+  if (post.is_gallery || post.gallery_data) return 'image';
   if (post.is_video) return 'video';
   if (post.post_hint === 'image') return 'image';
   if (post.post_hint === 'hosted:video') return 'video';
@@ -184,15 +196,16 @@ function buildCard(post) {
   const article = document.createElement('article');
   article.className = 'card';
   article.dataset.permalink = post.permalink || '';
-  const { mediaHtml, fullImageUrl } = buildMediaHtml(post);
+  article.dataset.postId = post.id || '';
+  const mediaBits = buildMediaHtml(post);
   article.innerHTML = `
     <header class="card-header">
       <a href="https://www.reddit.com${post.permalink}" target="_blank" rel="noopener noreferrer">
         ${escapeHtml(post.title || '[no title]')}
       </a>
     </header>
-    <div class="card-media" data-full="${fullImageUrl || ''}">
-      ${mediaHtml}
+    <div class="card-media" data-full="${mediaBits.fullImageUrl || ''}">
+      ${mediaBits.mediaHtml}
     </div>
     <div class="card-body">
       <span class="badge">r/${escapeHtml(post.subreddit || '')}</span>
@@ -200,6 +213,8 @@ function buildCard(post) {
     </div>
   `;
   article.addEventListener('click', evt => {
+    if (evt.target.closest('.card-header a')) return;
+    if (evt.target.closest('.gallery-arrow') || evt.target.closest('.gallery-track')) return;
     const mediaEl = article.querySelector('.card-media');
     const full = mediaEl?.dataset?.full || '';
     const title = post.title || '';
@@ -214,6 +229,36 @@ function buildMediaHtml(post) {
   let label = '';
   let html = '';
   let fullImageUrl = '';
+
+  const galleryItems = post.gallery_data?.items;
+  const mediaMeta = post.media_metadata;
+  if ((post.is_gallery || galleryItems) && mediaMeta && Array.isArray(galleryItems) && galleryItems.length) {
+    const urls = [];
+    for (const item of galleryItems) {
+      const id = item.media_id;
+      const meta = mediaMeta[id];
+      const u = meta?.s?.u || meta?.s?.gif || meta?.s?.mp4;
+      if (u) {
+        urls.push(safe(u));
+      }
+    }
+    if (urls.length) {
+      label = `Gallery (${urls.length})`;
+      fullImageUrl = urls[0];
+      const imgsHtml = urls.map(u => `<img class="gallery-img" src="${u}" data-full="${u}" alt="">`).join('');
+      html = `
+        <div class="gallery" data-count="${urls.length}">
+          <button type="button" class="gallery-arrow gallery-prev" aria-label="Previous image">‹</button>
+          <div class="gallery-track">
+            ${imgsHtml}
+          </div>
+          <button type="button" class="gallery-arrow gallery-next" aria-label="Next image">›</button>
+          <span class="tag">${label}</span>
+        </div>
+      `;
+      return { mediaHtml: html, fullImageUrl };
+    }
+  }
 
   if (post.is_video && post.media?.reddit_video?.fallback_url) {
     const src = safe(post.media.reddit_video.fallback_url);
@@ -286,6 +331,34 @@ lightboxImg.addEventListener('click', () => {
   lightboxImg.classList.toggle('zoomed');
 });
 
+resultsEl.addEventListener('click', evt => {
+  const arrowPrev = evt.target.closest('.gallery-prev');
+  const arrowNext = evt.target.closest('.gallery-next');
+  const img = evt.target.closest('.gallery-img');
+
+  if (arrowPrev || arrowNext) {
+    evt.stopPropagation();
+    const gallery = evt.target.closest('.gallery');
+    if (!gallery) return;
+    const track = gallery.querySelector('.gallery-track');
+    if (!track) return;
+    const delta = track.clientWidth * (arrowPrev ? -1 : 1);
+    track.scrollBy({ left: delta, behavior: 'smooth' });
+    return;
+  }
+
+  if (img) {
+    evt.stopPropagation();
+    const full = img.dataset.full || img.src;
+    const article = img.closest('.card');
+    const postId = article?.dataset.postId;
+    const post = state.posts.find(p => p.id === postId) || {};
+    const title = post.title || '';
+    const subreddit = post.subreddit || '';
+    openLightbox(full, title, subreddit);
+  }
+});
+
 async function buildZipFromCurrentPosts() {
   if (typeof JSZip === 'undefined') {
     statusEl.textContent = 'ZIP support not available. JSZip failed to load.';
@@ -303,20 +376,23 @@ async function buildZipFromCurrentPosts() {
 
   let added = 0;
   for (const post of mediaPosts) {
-    const { url, filename } = bestMediaUrlAndName(post);
-    if (!url || !filename) continue;
-    try {
-      const res = await fetch(url);
-      if (!res.ok) continue;
-      const blob = await res.blob();
-      const arrayBuffer = await blob.arrayBuffer();
-      zip.file(filename, arrayBuffer);
-      added += 1;
-      if (added % 5 === 0) {
-        statusEl.textContent = `Added ${added} items to ZIP so far…`;
+    const mediaItems = collectAllMediaUrls(post);
+    for (const item of mediaItems) {
+      const { url, filename } = item;
+      if (!url || !filename) continue;
+      try {
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        const blob = await res.blob();
+        const arrayBuffer = await blob.arrayBuffer();
+        zip.file(filename, arrayBuffer);
+        added += 1;
+        if (added % 5 === 0) {
+          statusEl.textContent = `Added ${added} items to ZIP so far…`;
+        }
+      } catch (err) {
+        console.warn('Skipping media due to error', err);
       }
-    } catch (err) {
-      console.warn('Skipping media due to error', err);
     }
   }
 
@@ -341,6 +417,36 @@ async function buildZipFromCurrentPosts() {
   downloadZipBtn.disabled = false;
 }
 
+function collectAllMediaUrls(post) {
+  const safe = url => url.replace(/&amp;/g, '&');
+  const items = [];
+
+  const galleryItems = post.gallery_data?.items;
+  const mediaMeta = post.media_metadata;
+  if ((post.is_gallery || galleryItems) && mediaMeta && Array.isArray(galleryItems) && galleryItems.length) {
+    let i = 1;
+    for (const item of galleryItems) {
+      const id = item.media_id;
+      const meta = mediaMeta[id];
+      const u = meta?.s?.u || meta?.s?.gif || meta?.s?.mp4;
+      if (u) {
+        const url = safe(u);
+        const ext = inferExt(url, 'jpg');
+        const base = buildSlug(post, i);
+        items.push({ url, filename: `${base}.${ext}` });
+        i += 1;
+      }
+    }
+    if (items.length) return items;
+  }
+
+  const single = bestMediaUrlAndName(post);
+  if (single.url && single.filename) {
+    items.push(single);
+  }
+  return items;
+}
+
 function bestMediaUrlAndName(post) {
   const safe = url => url.replace(/&amp;/g, '&');
   let url = '';
@@ -362,10 +468,20 @@ function bestMediaUrlAndName(post) {
     return { url: '', filename: '' };
   }
 
+  const base = buildSlug(post, null);
+  return { url, filename: `${base}.${ext}` };
+}
+
+function buildSlug(post, index) {
   const id = post.id || 'post';
-  const slug = (post.title || 'post').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0,60);
-  const nameBase = slug || id;
-  return { url, filename: `${nameBase || id}.${ext}` };
+  const slug = (post.title || 'post')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60);
+  const base = slug || id;
+  if (index != null) return `${base}-${index}`;
+  return base || id;
 }
 
 function inferExt(url, fallback) {
