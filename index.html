@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Red Github version – Reddit user viewer</title>
-  <link rel="stylesheet" href="assets/main.css?v=2">
+  <link rel="stylesheet" href="assets/main.css?v=4">
 </head>
 <body>
   <main class="container">
@@ -18,13 +18,13 @@
 
     <section class="panel">
       <form id="user-form" class="form">
-        <label for="username">Reddit user</label>
+        <label for="username">Reddit user or profile URL</label>
         <div class="row">
           <span class="prefix">u/</span>
-          <input id="username" name="username" type="text" placeholder="example" autocomplete="off">
+          <input id="username" name="username" type="text" placeholder="cman18 or https://www.reddit.com/u/cman18/guid" autocomplete="off">
           <button id="load-btn" type="submit">Load posts</button>
         </div>
-        <p class="help muted">Enter the username without u slash. Example: <code>cman18</code></p>
+        <p class="help muted">Paste a full Reddit profile URL or just the username.</p>
       </form>
 
       <div class="panel-row">
@@ -48,7 +48,7 @@
         <button id="download-zip" class="ghost-btn" type="button" disabled>Download ZIP</button>
       </div>
 
-      <p id="status" class="status muted">Idle. Enter a username and press Load posts.</p>
+      <p id="status" class="status muted">Idle. Paste a profile URL or enter a username then press Load posts.</p>
     </section>
 
     <section id="results" class="grid" aria-live="polite"></section>
@@ -67,7 +67,9 @@
     </div>
   </div>
 
+  <button id="scroll-top" class="scroll-top" aria-label="Scroll to top">↑</button>
+
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script type="module" src="assets/app.js?v=2"></script>
+  <script type="module" src="assets/app.js?v=4"></script>
 </body>
 </html>

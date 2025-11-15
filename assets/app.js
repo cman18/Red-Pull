@@ -15,6 +15,8 @@ const lightboxImg = document.getElementById('lightbox-img');
 const lightboxMeta = document.getElementById('lightbox-meta');
 const lightboxCloseBtn = document.getElementById('lightbox-close');
 
+const scrollTopBtn = document.getElementById('scroll-top');
+
 let state = {
   username: '',
   after: null,
@@ -24,9 +26,14 @@ let state = {
 
 form.addEventListener('submit', event => {
   event.preventDefault();
-  const username = (input.value || '').trim();
+  const raw = (input.value || '').trim();
+  if (!raw) {
+    statusEl.textContent = 'Please paste a Reddit profile URL or enter a username.';
+    return;
+  }
+  const username = normalizeToUsername(raw);
   if (!username) {
-    statusEl.textContent = 'Please enter a Reddit username.';
+    statusEl.textContent = 'Could not extract a username from that input.';
     return;
   }
   startNewUser(username);
@@ -46,6 +53,16 @@ downloadZipBtn.addEventListener('click', () => {
   });
 });
 
+window.addEventListener('scroll', () => {
+  const show = window.scrollY > 400;
+  if (show) scrollTopBtn.classList.add('visible');
+  else scrollTopBtn.classList.remove('visible');
+});
+
+scrollTopBtn.addEventListener('click', () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
 let observer = null;
 function setupInfiniteScroll() {
   if (observer) {
@@ -61,8 +78,29 @@ function setupInfiniteScroll() {
   observer.observe(sentinel);
 }
 
+function normalizeToUsername(raw) {
+  let value = raw.trim();
+  if (!value) return '';
+  if (/^https?:\/\//i.test(value)) {
+    try {
+      const u = new URL(value);
+      const path = u.pathname;
+      const m = path.match(/\/(u|user)\/([^\/]+)/i);
+      if (m && m[2]) {
+        return m[2];
+      }
+    } catch (e) {
+      console.warn('Failed to parse URL', e);
+    }
+  }
+  value = value.replace(/^https?:\/\/www\.reddit\.com\//i, '');
+  value = value.replace(/^u\//i, '').replace(/^user\//i, '');
+  const first = value.split(/[/?#]/)[0];
+  return first || '';
+}
+
 function startNewUser(username) {
-  state = { username: username.replace(/^u\//i, ''), after: null, loading: false, posts: [] };
+  state = { username, after: null, loading: false, posts: [] };
   resultsEl.innerHTML = '';
   statusEl.textContent = `Loading posts for u/${state.username}…`;
   downloadZipBtn.disabled = true;
@@ -218,8 +256,7 @@ function buildMediaHtml(post) {
 function escapeHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
+    .replace(/</g, '&lt;/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
