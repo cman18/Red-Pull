@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Red Github version – Reddit user viewer</title>
-  <link rel="stylesheet" href="assets/main.css?v=1">
+  <link rel="stylesheet" href="assets/main.css?v=2">
 </head>
 <body>
   <main class="container">
@@ -27,12 +27,47 @@
         <p class="help muted">Enter the username without u slash. Example: <code>cman18</code></p>
       </form>
 
+      <div class="panel-row">
+        <div class="toggle-group">
+          <label class="toggle">
+            <input type="checkbox" id="filter-images" checked>
+            <span class="toggle-ui"></span>
+            <span class="toggle-label">Images</span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" id="filter-videos" checked>
+            <span class="toggle-ui"></span>
+            <span class="toggle-label">Videos</span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" id="filter-other" checked>
+            <span class="toggle-ui"></span>
+            <span class="toggle-label">Other</span>
+          </label>
+        </div>
+        <button id="download-zip" class="ghost-btn" type="button" disabled>Download ZIP</button>
+      </div>
+
       <p id="status" class="status muted">Idle. Enter a username and press Load posts.</p>
     </section>
 
     <section id="results" class="grid" aria-live="polite"></section>
+    <div id="sentinel" class="sentinel" aria-hidden="true"></div>
+    <div id="loading-more" class="loading-more muted" hidden>Loading more…</div>
   </main>
 
-  <script type="module" src="assets/app.js?v=1"></script>
+  <div id="lightbox" class="lightbox" hidden>
+    <div class="lightbox-backdrop"></div>
+    <div class="lightbox-inner">
+      <button id="lightbox-close" class="lightbox-close" type="button" aria-label="Close">×</button>
+      <div class="lightbox-media-wrap">
+        <img id="lightbox-img" alt="Full size media">
+      </div>
+      <div id="lightbox-meta" class="lightbox-meta muted"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script type="module" src="assets/app.js?v=2"></script>
 </body>
 </html>
