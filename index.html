@@ -1,12 +1,38 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
-<title>Red Github Tester</title>
-<link rel="stylesheet" href="assets/main.3309b9e2.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Red Github version – Reddit user viewer</title>
+  <link rel="stylesheet" href="assets/main.css?v=1">
 </head>
 <body>
-<h1>Red Github Tester Update</h1>
-<script src="assets/app.a9a21a52.js"></script>
+  <main class="container">
+    <header class="top">
+      <h1>Red Github version</h1>
+      <p class="muted">Client side viewer for posts by a Reddit user. Runs entirely on GitHub Pages with no server.</p>
+    </header>
+
+    <section class="panel">
+      <form id="user-form" class="form">
+        <label for="username">Reddit user</label>
+        <div class="row">
+          <span class="prefix">u/</span>
+          <input id="username" name="username" type="text" placeholder="example" autocomplete="off">
+          <button id="load-btn" type="submit">Load posts</button>
+        </div>
+        <p class="help muted">Enter the username without u slash. Example: <code>cman18</code></p>
+      </form>
+
+      <p id="status" class="status muted">Idle. Enter a username and press Load posts.</p>
+    </section>
+
+    <section id="results" class="grid" aria-live="polite"></section>
+  </main>
+
+  <script type="module" src="assets/app.js?v=1"></script>
 </body>
 </html>
